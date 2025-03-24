@@ -1,5 +1,3 @@
-re-write below code  by using find mp3 files from a folder then do comparision with one input file
-
 import librosa
 import numpy as np
 import os
@@ -132,7 +130,8 @@ def find_and_compare_mp3(input_file, folder_path, **kwargs):
 # Example usage
 if __name__ == "__main__":
     # Input file and folder path
-    input_file = "./MSE25_DSP_data/mp3_store/runglathap.mp3"
+    #input_file = "./MSE25_DSP_data/mp3_store/runglathap.mp3"
+    input_file = "./MSE25_DSP_data/mp3_store/HoaTrinhNu-NhuHuynh-4711817.mp3"
     folder_path = "./MSE25_DSP_data/mp3_store"
 
     # Test Case 1: Default thresholds
