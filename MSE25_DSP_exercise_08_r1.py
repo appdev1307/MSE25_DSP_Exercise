@@ -1,7 +1,8 @@
+re-write below code  by using find mp3 files from a folder then do comparision with one input file
+
 import librosa
 import numpy as np
 import os
-import sys
 from pathlib import Path
 
 def load_audio(file_path):
@@ -111,9 +112,9 @@ def find_and_compare_mp3(input_file, folder_path, **kwargs):
         print(f"No .mp3 files found in {folder_path}.")
         return
 
-    print(f"\nFound {len(mp3_files)} .mp3 files in {folder_path}:")
-    for mp3_file in mp3_files:
-        print(f" - {mp3_file}")
+#     print(f"\nFound {len(mp3_files)} .mp3 files in {folder_path}:")
+#     for mp3_file in mp3_files:
+#         print(f" - {mp3_file}")
 
     # Compare input file with each .mp3 file in the folder
     results = []
@@ -123,34 +124,29 @@ def find_and_compare_mp3(input_file, folder_path, **kwargs):
         results.append((mp3_file, is_similar, mfcc_sim, tempo_diff, centroid_diff))
     
     # Display summary
-    print("\n=== Comparison Summary ===")
-    for file_name, is_similar, mfcc_sim, tempo_diff, centroid_diff in results:
-        print(f"{file_name}: {'Similar' if is_similar else 'Different'} "
-              f"(MFCC: {mfcc_sim:.3f}, Tempo Diff: {tempo_diff:.2f}, Centroid Diff: {centroid_diff:.2f})")
+#     print("\n=== Comparison Summary ===")
+#     for file_name, is_similar, mfcc_sim, tempo_diff, centroid_diff in results:
+#         print(f"{file_name}: {'Similar' if is_similar else 'Different'} "
+#               f"(MFCC: {mfcc_sim:.3f}, Tempo Diff: {tempo_diff:.2f}, Centroid Diff: {centroid_diff:.2f})")
 
-# Example usage with command-line argument
+# Example usage
 if __name__ == "__main__":
-    # Check if input file is provided as a command-line argument
-    if len(sys.argv) < 2:
-        print("Usage: python script.py <input_file_path>")
-        sys.exit(1)
-
-    # Get input file from command-line argument
-    input_file = sys.argv[1]
-    folder_path = "./MSE25_DSP_data"  # Folder path can still be hardcoded or also passed as an argument
+    # Input file and folder path
+    input_file = "./MSE25_DSP_data/mp3_store/runglathap.mp3"
+    folder_path = "./MSE25_DSP_data/mp3_store"
 
     # Test Case 1: Default thresholds
-    print("\n=== Test Case 1: Default Thresholds ===")
-    find_and_compare_mp3(
-        input_file,
-        folder_path,
-        mfcc_threshold=0.95,
-        tempo_threshold=5,
-        centroid_threshold=200
-    )
+#     print("\n=== Test Case 1: Default Thresholds ===")
+#     find_and_compare_mp3(
+#         input_file,
+#         folder_path,
+#         mfcc_threshold=0.95,
+#         tempo_threshold=5,
+#         centroid_threshold=200
+#     )
 
     # Test Case 2: Custom thresholds (more lenient)
-    print("\n=== Test Case 2: Custom Thresholds (More Lenient) ===")
+    print("\n=== Test Case 1: Custom Thresholds (More Lenient) ===")
     find_and_compare_mp3(
         input_file,
         folder_path,
