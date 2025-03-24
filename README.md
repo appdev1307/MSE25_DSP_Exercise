@@ -6,6 +6,7 @@ Nghiên cứu thực hiện nhận diện bài hát qua đặc trưng on Desktop
 
 1. copy mp3 files to folder MSE25_DSP_data/mp3_store for making database
 2. Take one new mp3 file and save in MSE25_DSP_data.
-3. run the below statement:
-   python MSE25_DSP_exercise_08.py ./MSE25_DSP_data/runglathap.mp3
+3. go into source code, change input_file to file name of mp3 which is used to compare with the database
+4. run the below statement:
+   python MSE25_DSP_exercise_08_(the latest version/any verion).py
 
