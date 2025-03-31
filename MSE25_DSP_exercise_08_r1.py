@@ -2,6 +2,7 @@ import librosa
 import numpy as np
 import os
 from pathlib import Path
+from IPython.display import display, HTML
 
 def load_audio(file_path):
     """Load audio file and return audio time series and sampling rate."""
@@ -81,14 +82,17 @@ def compare_songs(input_file, compare_file, mfcc_threshold=0.95, tempo_threshold
         print(f"Tempo Difference: {tempo_diff:.2f} BPM (Threshold: {tempo_threshold})")
         print(f"Centroid Difference: {centroid_diff:.2f} Hz (Threshold: {centroid_threshold})")
         
-        # Determine similarity
+        # Determine similarity with colored HTML output
         is_similar = (
             mfcc_similarity >= mfcc_threshold and
             tempo_diff <= tempo_threshold and
             centroid_diff <= centroid_threshold
         )
         
-        print(f"Result: {'Similar' if is_similar else 'Different'}")
+        result_text = "Similar" if is_similar else "Different"
+        color = "green" if is_similar else "red"
+        display(HTML(f"Result: <span style='color:{color}'>{result_text}</span>"))
+        
         return is_similar, mfcc_similarity, tempo_diff, centroid_diff
     except Exception as e:
         print(f"Error during comparison: {e}")
@@ -110,9 +114,9 @@ def find_and_compare_mp3(input_file, folder_path, **kwargs):
         print(f"No .mp3 files found in {folder_path}.")
         return
 
-#     print(f"\nFound {len(mp3_files)} .mp3 files in {folder_path}:")
-#     for mp3_file in mp3_files:
-#         print(f" - {mp3_file}")
+    print(f"\nFound {len(mp3_files)} .mp3 files in {folder_path}:")
+    for mp3_file in mp3_files:
+        print(f" - {mp3_file}")
 
     # Compare input file with each .mp3 file in the folder
     results = []
@@ -121,15 +125,33 @@ def find_and_compare_mp3(input_file, folder_path, **kwargs):
         is_similar, mfcc_sim, tempo_diff, centroid_diff = compare_songs(input_file, compare_file_path, **kwargs)
         results.append((mp3_file, is_similar, mfcc_sim, tempo_diff, centroid_diff))
     
+    # Display summary with colored HTML output
+    print("\n=== Comparison Summary ===")
+    summary_html = "<table>"
+    summary_html += "<tr><th>File</th><th>Result</th><th>MFCC</th><th>Tempo Diff</th><th>Centroid Diff</th></tr>"
+    for file_name, is_similar, mfcc_sim, tempo_diff, centroid_diff in results:
+        result_text = "Similar" if is_similar else "Different"
+        color = "green" if is_similar else "red"
+        summary_html += (
+            f"<tr>"
+            f"<td>{file_name}</td>"
+            f"<td><span style='color:{color}'>{result_text}</span></td>"
+            f"<td>{mfcc_sim:.3f}</td>"
+            f"<td>{tempo_diff:.2f}</td>"
+            f"<td>{centroid_diff:.2f}</td>"
+            f"</tr>"
+        )
+    summary_html += "</table>"
+    display(HTML(summary_html))
+
 # Example usage
 if __name__ == "__main__":
     # Input file and folder path
-    #input_file = "./MSE25_DSP_data/mp3_store/runglathap.mp3"
     input_file = "./MSE25_DSP_data/mp3_store/HoaTrinhNu-NhuHuynh-4711817.mp3"
     folder_path = "./MSE25_DSP_data/mp3_store"
 
     # Test Case: Custom thresholds (more lenient)
-    print("\n=== Test Case 1: Custom Thresholds (More Lenient) ===")
+    print("\n=== Test Case: Custom Thresholds (More Lenient) ===")
     find_and_compare_mp3(
         input_file,
         folder_path,
