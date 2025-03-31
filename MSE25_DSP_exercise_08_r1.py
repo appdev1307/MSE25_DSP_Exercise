@@ -121,12 +121,6 @@ def find_and_compare_mp3(input_file, folder_path, **kwargs):
         is_similar, mfcc_sim, tempo_diff, centroid_diff = compare_songs(input_file, compare_file_path, **kwargs)
         results.append((mp3_file, is_similar, mfcc_sim, tempo_diff, centroid_diff))
     
-    # Display summary
-#     print("\n=== Comparison Summary ===")
-#     for file_name, is_similar, mfcc_sim, tempo_diff, centroid_diff in results:
-#         print(f"{file_name}: {'Similar' if is_similar else 'Different'} "
-#               f"(MFCC: {mfcc_sim:.3f}, Tempo Diff: {tempo_diff:.2f}, Centroid Diff: {centroid_diff:.2f})")
-
 # Example usage
 if __name__ == "__main__":
     # Input file and folder path
@@ -134,17 +128,7 @@ if __name__ == "__main__":
     input_file = "./MSE25_DSP_data/mp3_store/HoaTrinhNu-NhuHuynh-4711817.mp3"
     folder_path = "./MSE25_DSP_data/mp3_store"
 
-    # Test Case 1: Default thresholds
-#     print("\n=== Test Case 1: Default Thresholds ===")
-#     find_and_compare_mp3(
-#         input_file,
-#         folder_path,
-#         mfcc_threshold=0.95,
-#         tempo_threshold=5,
-#         centroid_threshold=200
-#     )
-
-    # Test Case 2: Custom thresholds (more lenient)
+    # Test Case: Custom thresholds (more lenient)
     print("\n=== Test Case 1: Custom Thresholds (More Lenient) ===")
     find_and_compare_mp3(
         input_file,
