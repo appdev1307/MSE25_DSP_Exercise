@@ -26,7 +26,7 @@ def extract_features(audio, sr):
         # Tempo (rhythm)
         tempo, _ = librosa.beat.beat_track(y=audio, sr=sr)
         tempo = float(tempo) if isinstance(tempo, np.ndarray) else tempo
-        
+
         # Spectral Centroid (brightness/tone)
         spectral_centroid = librosa.feature.spectral_centroid(y=audio, sr=sr)[0]
         centroid_mean = np.mean(spectral_centroid)
@@ -94,15 +94,19 @@ def compare_songs(file1, file2, mfcc_threshold=0.95, tempo_threshold=5, centroid
         print(f"Error during comparison: {e}")
         return False
 
+def get_song_name(file_path):
+    """Extract song name from file path."""
+    return os.path.basename(file_path).split('.')[0]
+
 # Example usage
 if __name__ == "__main__":
     # Define file paths
-    song1_path = "./MSE25_DSP_data/4ze23ae2yv.mp3"
-    song2_path = "./MSE25_DSP_data/ujqpakwgzp.mp3"
-    song3_path = "./MSE25_DSP_data/RungLaThap-BaoNguyen-7047059.mp3"
+    song1_path = "./MSE25_DSP_data/mp3_store/lactroi-origin.mp3"
+    song2_path = "./MSE25_DSP_data/mp3_store/lactroi-remix.mp3"
+    song3_path = "./MSE25_DSP_data/mp3_store/lactroi-copy1.mp3"
     
     # Test Case 1: Default thresholds
-    print("\n=== Test Case 1: Default Thresholds ===")
+    print("\n=== Test Case 1: Default Thresholds (Song1:",get_song_name(song1_path)," vs Song2:",get_song_name(song2_path),") ===")
     are_similar = compare_songs(song1_path, song2_path)
     print(f"Are {os.path.basename(song1_path)} and {os.path.basename(song2_path)} similar? {are_similar}")
 
