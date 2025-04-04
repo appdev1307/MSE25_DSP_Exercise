@@ -1,8 +1,10 @@
 import librosa
+import librosa.display
 import numpy as np
 import os
 from pathlib import Path
 from IPython.display import display, HTML
+import matplotlib.pyplot as plt
 
 def load_audio(file_path):
     """Load audio file and return audio time series and sampling rate."""
@@ -18,14 +20,14 @@ def load_audio(file_path):
         return None, None
 
 def extract_features(audio, sr):
-    """Extract audio features for comparison."""
+    """Extract audio features for comparison and return intermediate results for visualization."""
     try:
         # MFCCs (timbre)
         mfcc = librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=13)
         mfcc_mean = np.mean(mfcc, axis=1)
-        
+                
         # Tempo (rhythm)
-        tempo, _ = librosa.beat.beat_track(y=audio, sr=sr)
+        tempo, beat_frames = librosa.beat.beat_track(y=audio, sr=sr)
         tempo = float(tempo) if isinstance(tempo, np.ndarray) else tempo
         
         # Spectral Centroid (brightness/tone)
@@ -38,15 +40,16 @@ def extract_features(audio, sr):
             'spectral_centroid': centroid_mean
         }
         print(f"Features extracted - Tempo: {tempo:.2f} BPM, Centroid: {centroid_mean:.2f} Hz")
-        return features
+        return features, mfcc, beat_frames, spectral_centroid
     except Exception as e:
         print(f"Error extracting features: {e}")
-        return None
+        return None, None, None, None
 
 def compare_songs(input_file, compare_file, mfcc_threshold=0.95, tempo_threshold=5, centroid_threshold=200):
     """
     Compare two audio files based on MFCC, tempo, and spectral centroid.
     Returns tuple (is_similar, mfcc_similarity, tempo_diff, centroid_diff).
+    Also visualizes the spectra of the features.
     """
     print(f"\nComparing {input_file} and {compare_file}...")
 
@@ -58,9 +61,9 @@ def compare_songs(input_file, compare_file, mfcc_threshold=0.95, tempo_threshold
         print("Comparison failed due to loading errors.")
         return False, 0.0, 0.0, 0.0
     
-    # Extract features
-    features1 = extract_features(audio1, sr1)
-    features2 = extract_features(audio2, sr2)
+    # Extract features and intermediate results for visualization
+    features1, mfcc1, beat_frames1, spectral_centroid1 = extract_features(audio1, sr1)
+    features2, mfcc2, beat_frames2, spectral_centroid2 = extract_features(audio2, sr2)
     
     if features1 is None or features2 is None:
         print("Comparison failed due to feature extraction errors.")
@@ -92,6 +95,82 @@ def compare_songs(input_file, compare_file, mfcc_threshold=0.95, tempo_threshold
         result_text = "Similar" if is_similar else "Different"
         color = "green" if is_similar else "red"
         display(HTML(f"Result: <span style='color:{color}'>{result_text}</span>"))
+
+        # --- Visualization ---
+
+        # Convert beat frames to time (in seconds)
+        beat_times1 = librosa.frames_to_time(beat_frames1, sr=sr1)
+        beat_times2 = librosa.frames_to_time(beat_frames2, sr=sr2)
+
+        # Compute onset strength envelopes for tempo visualization
+        onset_env1 = librosa.onset.onset_strength(y=audio1, sr=sr1)
+        onset_env2 = librosa.onset.onset_strength(y=audio2, sr=sr2)
+        times1 = librosa.times_like(onset_env1, sr=sr1)
+        times2 = librosa.times_like(onset_env2, sr=sr2)
+
+        # Time axis for spectral centroids
+        centroid_times1 = librosa.times_like(spectral_centroid1, sr=sr1)
+        centroid_times2 = librosa.times_like(spectral_centroid2, sr=sr2)
+
+        # Create a figure with subplots
+        plt.figure(figsize=(12, 12))
+
+        # 1. MFCCs for both audio files
+        plt.subplot(3, 2, 1)
+        librosa.display.specshow(mfcc1, x_axis='time', sr=sr1, cmap='viridis')
+        plt.colorbar(label='Amplitude (dB)')
+        plt.title(f'MFCCs - {Path(input_file).name}')
+        plt.xlabel('Time (s)')
+        plt.ylabel('MFCC Coefficient Index')
+
+        plt.subplot(3, 2, 2)
+        librosa.display.specshow(mfcc2, x_axis='time', sr=sr2, cmap='viridis')
+        plt.colorbar(label='Amplitude (dB)')
+        plt.title(f'MFCCs - {Path(compare_file).name}')
+        plt.xlabel('Time (s)')
+        plt.ylabel('MFCC Coefficient Index')
+
+        # 2. Onset Strength Envelopes with Beats (for Tempo)
+        plt.subplot(3, 2, 3)
+        plt.plot(times1, onset_env1, label='Onset Strength', color='b')
+        plt.vlines(beat_times1, 0, onset_env1.max(), color='r', linestyle='--', label='Detected Beats')
+        plt.title(f'Onset Strength - {Path(input_file).name} (Tempo: {features1["tempo"]:.2f} BPM)')
+        plt.xlabel('Time (s)')
+        plt.ylabel('Onset Strength')
+        plt.legend()
+        plt.grid(True)
+
+        plt.subplot(3, 2, 4)
+        plt.plot(times2, onset_env2, label='Onset Strength', color='b')
+        plt.vlines(beat_times2, 0, onset_env2.max(), color='r', linestyle='--', label='Detected Beats')
+        plt.title(f'Onset Strength - {Path(compare_file).name} (Tempo: {features2["tempo"]:.2f} BPM)')
+        plt.xlabel('Time (s)')
+        plt.ylabel('Onset Strength')
+        plt.legend()
+        plt.grid(True)
+
+        # 3. Spectral Centroids
+        plt.subplot(3, 2, 5)
+        plt.plot(centroid_times1, spectral_centroid1, label='Spectral Centroid', color='g')
+        plt.axhline(features1['spectral_centroid'], color='r', linestyle='--', label=f'Mean: {features1["spectral_centroid"]:.2f} Hz')
+        plt.title(f'Spectral Centroid - {Path(input_file).name}')
+        plt.xlabel('Time (s)')
+        plt.ylabel('Frequency (Hz)')
+        plt.legend()
+        plt.grid(True)
+
+        plt.subplot(3, 2, 6)
+        plt.plot(centroid_times2, spectral_centroid2, label='Spectral Centroid', color='g')
+        plt.axhline(features2['spectral_centroid'], color='r', linestyle='--', label=f'Mean: {features2["spectral_centroid"]:.2f} Hz')
+        plt.title(f'Spectral Centroid - {Path(compare_file).name}')
+        plt.xlabel('Time (s)')
+        plt.ylabel('Frequency (Hz)')
+        plt.legend()
+        plt.grid(True)
+
+        # Adjust layout and display the plot
+        plt.tight_layout()
+        plt.show()
         
         return is_similar, mfcc_similarity, tempo_diff, centroid_diff
     except Exception as e:
@@ -147,7 +226,7 @@ def find_and_compare_mp3(input_file, folder_path, **kwargs):
 # Example usage
 if __name__ == "__main__":
     # Input file and folder path
-    input_file = "./MSE25_DSP_data/mp3_store/HoaTrinhNu-NhuHuynh-4711817.mp3"
+    input_file = "./MSE25_DSP_data/mp3_store/ConDuongXuaEmDi-HoangThucLinh-5217163.mp3"
     folder_path = "./MSE25_DSP_data/mp3_store"
 
     # Test Case: Custom thresholds (more lenient)
