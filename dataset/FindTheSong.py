@@ -6,7 +6,7 @@ import json
 from sklearn.metrics.pairwise import cosine_similarity
 
 # === GHI ÂM ===
-def record_audio(filename="recorded.wav", duration=10, fs=44100):
+def record_audio(filename="recorded.wav", duration=12, fs=44100):
     print("🎙️ Đang ghi âm...")
     audio = sd.rec(int(duration * fs), samplerate=fs, channels=1)
     sd.wait()
@@ -41,19 +41,52 @@ def load_database(json_path):
     with open(json_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
+# 🔹 sr – Sampling Rate
+# Mặc định: 44100 Hz (chuẩn CD)
+# Là tần số lấy mẫu khi load file → quyết định độ phân giải tần số
+# Càng cao → giữ được nhiều tần số cao (âm sáng, chi tiết)
+# 📌 Gợi ý:
+# 22050 → nhẹ, nhanh
+# 44100 → chi tiết, full phổ 0–22kHz
+
+# 🔹 n_mfcc – Số hệ số MFCC
+# Mặc định: 40
+# Là số lượng Mel-Frequency Cepstral Coefficients bạn muốn trích xuất
+# Mỗi frame MFCC sẽ có n_mfcc giá trị
+# 📌 Gợi ý:
+# 13 → truyền thống (nhận diện giọng)
+# 20–26 → phổ biến cho nhạc
+# 40 → giàu thông tin (dùng cho ML hoặc nhạc phức tạp)
+#
+# 🔹 n_fft – Cửa sổ FFT
+# Mặc định: 4096
+# Là kích thước khung (số mẫu) khi thực hiện biến đổi Fourier
+# Càng lớn → độ phân giải tần số càng cao, nhưng kém chi tiết theo thời gian
+# 📌 Gợi ý:
+# 1024 → tốt cho real-time
+# 2048 → phổ thông
+# 4096 → chi tiết cao về tần số 🎯
+#
+# 🔹 hop_length – Bước trượt
+# Mặc định: 256 (tức ~5.8ms với sr=44100)
+# Là số mẫu nhảy qua mỗi lần trượt cửa sổ
+# Quyết định độ phân giải theo thời gian
+# 📌 Gợi ý:
+# 512 → mượt, nhẹ
+# 256 → chi tiết hơn (đặc biệt khi hát hoặc huýt)
+#
+# 🔹 use_delta – Thêm delta MFCC
+# Mặc định: True
+# Nếu bật → thêm:
+# delta: tốc độ thay đổi (1st-order)
+# delta-delta: gia tốc thay đổi (2nd-order)
+# 📌 Giúp tăng khả năng nhận biết giai điệu đang lên/xuống, biến động
 def extract_mfcc_pro(file_path,
                      sr=44100,
                      n_mfcc=40,
                      n_fft=4096,
                      hop_length=256,
                      use_delta=True):
-    """
-    Trích xuất MFCC chuyên sâu:
-    - Chuẩn hóa âm lượng
-    - Cắt khoảng lặng
-    - Lọc pre-emphasis
-    - MFCC + delta (biến động)
-    """
 
     # Load audio với sampling rate cao
     y, sr = librosa.load(file_path, sr=sr)
@@ -150,7 +183,7 @@ def extract_mfcc_ultra(file_path,
 # 🎵 Nhận diện bản phối lại	                MFCC ≥ 0.85, tempo ≤ 20, centroid ≤ 500
 # 🎙️ Nhận diện người huýt sáo/hát lại	    MFCC ≥ 0.75, tempo ≤ 25, centroid bỏ qua
 def find_best_match_whistle(query_vec, query_tempo, query_centroid, database,
-                            mfcc_weight=0.65, tempo_weight=0.25, centroid_weight=0.1):
+                            mfcc_weight=0.55, tempo_weight=0.3, centroid_weight=0.15):
     candidates = []
 
     for song in database:
@@ -172,15 +205,16 @@ def find_best_match_whistle(query_vec, query_tempo, query_centroid, database,
         print(f"MFCC: {sim_mfcc:.3f}, Tempo Diff: {tempo_diff:.2f} BPM, Centroid Diff: {centroid_diff:.2f} Hz")
 
         # Sử dụng threshold gần sát 100%
-        # if sim_mfcc >= 0.98 or tempo_diff <= 2 or centroid_diff <= 50:
-        #     candidates.append((song, 0.98)
-        #     continue
+        # or centroid_diff <= 50
+        if sim_mfcc >= 0.98 or tempo_diff <= 2:
+            candidates.append((song, 0.99))
+            continue
 
         # Lọc theo threshold
-        if sim_mfcc >= 0.75 and tempo_diff <= 25 and centroid_diff <= 500:
+        if sim_mfcc >= 0.75 and tempo_diff <= 15 and centroid_diff <= 350:
             # Chuẩn hoá các diff về [0–1] rồi chuyển thành điểm
-            tempo_score = 1 - (tempo_diff / 25)
-            centroid_score = 1 - (centroid_diff / 500)
+            tempo_score = 1 - (tempo_diff / 15)
+            centroid_score = 1 - (centroid_diff / 350)
 
             score = sim_mfcc * mfcc_weight + tempo_score * tempo_weight + centroid_score * centroid_weight
             candidates.append((song, score))
@@ -190,10 +224,10 @@ def find_best_match_whistle(query_vec, query_tempo, query_centroid, database,
         candidates.sort(key=lambda x: x[1], reverse=True)
         print("\n🔍 Các bài hát khả thi:")
         for song, score in candidates:
-            print(f"  - {song['title']} - {song['artist_name']}: {score:.3f}")
+            print(f"  - {song['title']} - {song['artist_name']}: {score*100:.2f}%")
 
         best_song = candidates[0][0]
-        print(f"\n✅ Nhận diện: {best_song['title']} - {best_song['artist_name']}")
+        print(f"\n✅✅✅ Nhận diện: {best_song['title']} - {best_song['artist_name']}")
         return best_song
     else:
         print("\n❌ Không có bài nào đạt đủ điều kiện threshold.")

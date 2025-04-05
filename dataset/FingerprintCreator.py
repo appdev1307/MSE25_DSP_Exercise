@@ -108,7 +108,8 @@ def extract_mfcc_ultra(file_path,
 
 if __name__ == '__main__':
     # Đường dẫn
-    mp3_root = Path("fma_small")
+    # mp3_root = Path("fma_small")
+    mp3_root = Path("custom_database")
     metadata_path = Path("fma_metadata/tracks.csv")
     output_file = "fma_20_songs_db.json"
 
@@ -121,8 +122,8 @@ if __name__ == '__main__':
         for file in files:
             if file.endswith(".mp3"):
                 mp3_files.append(Path(root) / file)
-    # mp3_files = sorted(mp3_files)[:20] # Lấy 20 bài đầu tiên (Remove :20 to get all)
-    mp3_files = sorted(mp3_files)
+    mp3_files = sorted(mp3_files)[:20] # Lấy 20 bài đầu tiên (Remove :20 to get all)
+    # mp3_files = sorted(mp3_files) # Lấy tất cả các bài trong thư mục
 
     # Xử lý từng bài và lưu đặc trưng
     db = []
@@ -135,12 +136,12 @@ if __name__ == '__main__':
             try:
                 title = df.loc[track_id, ('track', 'title')]
             except Exception as e:
-                title = mp3_file.name.split('.')[0]
+                title = mp3_file.name.split('-')[0]
 
             try:
                 artist = df.loc[track_id, ('artist', 'name')]
             except Exception as e:
-                artist = "Unknown Artist"
+                artist = mp3_file.name.split('-')[1]
 
             try:
                 album = df.loc[track_id, ('album', 'title')]
