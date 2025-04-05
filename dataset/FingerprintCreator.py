@@ -5,6 +5,107 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
+def extract_mfcc_pro(file_path,
+                     sr=44100,
+                     n_mfcc=40,
+                     n_fft=4096,
+                     hop_length=256,
+                     use_delta=True):
+    """
+    Trích xuất MFCC chuyên sâu:
+    - Chuẩn hóa âm lượng
+    - Cắt khoảng lặng
+    - Lọc pre-emphasis
+    - MFCC + delta (biến động)
+    """
+
+    # Load audio với sampling rate cao
+    y, sr = librosa.load(file_path, sr=sr)
+
+    # Normalize biên độ
+    y = librosa.util.normalize(y)
+
+    # Cắt khoảng lặng (silence)
+    y, _ = librosa.effects.trim(y)
+
+    # Pre-emphasis filter (làm nổi bật tần số cao)
+    pre_emphasis = 0.97
+    y_preemph = np.append(y[0], y[1:] - pre_emphasis * y[:-1])
+
+    # Tính MFCC
+    mfcc = librosa.feature.mfcc(
+        y=y_preemph,
+        sr=sr,
+        n_mfcc=n_mfcc,
+        n_fft=n_fft,
+        hop_length=hop_length
+    )
+
+    if use_delta:
+        # Tính delta và delta-delta
+        delta = librosa.feature.delta(mfcc)
+        delta2 = librosa.feature.delta(mfcc, order=2)
+        mfcc_all = np.vstack([mfcc, delta, delta2])
+    else:
+        mfcc_all = mfcc
+
+    # Trả về vector trung bình
+    mfcc_mean = mfcc_all.mean(axis=1)
+
+    return mfcc_mean
+
+# Tính MFCC siêu cấp (ultra) với độ chính xác tối đa
+def extract_mfcc_ultra(file_path,
+                       sr=48000,
+                       n_mfcc=40,
+                       n_fft=4096,
+                       hop_length=256,
+                       use_delta=True,
+                       apply_cmvn=False):
+    """
+    Trích xuất MFCC siêu cấp: độ chính xác tối đa
+    """
+
+    # Load & normalize
+    y, _ = librosa.load(file_path, sr=sr)
+    y = librosa.util.normalize(y)
+
+    # Trim silence (chính xác hơn)
+    y, _ = librosa.effects.trim(y, top_db=30)
+
+    # Pre-emphasis filter
+    pre_emphasis = 0.97
+    y_preemph = np.append(y[0], y[1:] - pre_emphasis * y[:-1])
+
+    # MFCC
+    mfcc = librosa.feature.mfcc(
+        y=y_preemph,
+        sr=sr,
+        n_mfcc=n_mfcc,
+        n_fft=n_fft,
+        hop_length=hop_length
+    )
+
+    # Thêm log-energy (dòng đầu tiên là tổng năng lượng khung)
+    log_energy = librosa.feature.rms(y=y_preemph, hop_length=hop_length).flatten()
+    log_energy = np.log1p(log_energy)  # log(1 + E)
+    log_energy = np.expand_dims(log_energy, axis=0)
+    mfcc = np.vstack([log_energy, mfcc])  # giờ là (n_mfcc+1, T)
+
+    if use_delta:
+        delta = librosa.feature.delta(mfcc)
+        delta2 = librosa.feature.delta(mfcc, order=2)
+        mfcc = np.vstack([mfcc, delta, delta2])  # (n_feat*3, T)
+
+    if apply_cmvn:
+        # Apply Cepstral Mean Variance Normalization
+        mfcc = (mfcc - np.mean(mfcc, axis=1, keepdims=True)) / \
+               (np.std(mfcc, axis=1, keepdims=True) + 1e-6)
+
+    mfcc_mean = mfcc.mean(axis=1)
+    return mfcc_mean
+
+
 if __name__ == '__main__':
     # Đường dẫn
     mp3_root = Path("fma_small")
@@ -20,7 +121,8 @@ if __name__ == '__main__':
         for file in files:
             if file.endswith(".mp3"):
                 mp3_files.append(Path(root) / file)
-    mp3_files = sorted(mp3_files)[:20] # Lấy 20 bài đầu tiên (Remove :20 to get all)
+    # mp3_files = sorted(mp3_files)[:20] # Lấy 20 bài đầu tiên (Remove :20 to get all)
+    mp3_files = sorted(mp3_files)
 
     # Xử lý từng bài và lưu đặc trưng
     db = []
@@ -50,7 +152,9 @@ if __name__ == '__main__':
 
             # Tính MFCC
             mfcc = librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=13)
-            mfcc_mean = mfcc.mean(axis=1).tolist()
+            # mfcc_mean = mfcc.mean(axis=1).tolist() # Normal MFCC
+            mfcc_mean = extract_mfcc_pro(mp3_file).tolist() # Pro MFCC
+            # mfcc_mean = extract_mfcc_ultra(mp3_file).tolist() # Ultra MFCC
 
             # Tempo (rhythm)
             tempo, _ = librosa.beat.beat_track(y=audio, sr=sr)
